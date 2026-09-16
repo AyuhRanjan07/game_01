@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cqow47bch5ocs"]
+
+[ext_resource type="Script" uid="uid://blfycyiq143q" path="res://scripts/word_finder.gd" id="1_o5qli"]
+
+[node name="main" type="Node2D" unique_id=559563363]
+script = ExtResource("1_o5qli")
+
+[node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="." unique_id=638138321]
