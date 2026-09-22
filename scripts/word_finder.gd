@@ -58,6 +58,7 @@ const MUSIC_VOLUME_NORMAL := -20.0  # baseline music volume, a bit lower than be
 const MUSIC_VOLUME_DUCKED := -28.0  # quieter dip when you hit a wrong letter
 const MUSIC_VOLUME_PAUSED := -26.0  # quieter dip while paused
 const SAVE_PATH := "user://word_finder_highscore.save"  # filename kept for backward compatibility with existing saves
+const EMOJI_FONT_PATH := "res://fonts/NotoEmoji-Variable.ttf"
 # Simple pentatonic riff (C D E G A G E D), loops forever as the background music
 const MELODY := [
 	{"freq": 261.63, "dur": 0.25}, {"freq": 293.66, "dur": 0.25},
@@ -137,6 +138,7 @@ var sfx_phase := 0.0
 
 func _ready() -> void:
 	randomize()
+	_setup_emoji_font()
 	for i in AmbientBackgroundScript.PALETTES.size():
 		unlocked_announced.append(false)
 	for a in ACHIEVEMENTS:
@@ -159,6 +161,20 @@ func _ready() -> void:
 	_setup_resize_listener()
 
 	_play_logo_intro()
+
+# ---------- FONTS ----------
+# Desktop builds borrow emoji glyphs from the OS font list, but exported web
+# builds have no system fonts at all, so every emoji in the UI (streak, toasts,
+# achievements, the mute/settings buttons) renders as a blank box. Registering a
+# bundled emoji face as a fallback on the default font covers all of them at once.
+func _setup_emoji_font() -> void:
+	var emoji_font: Font = load(EMOJI_FONT_PATH)
+	if emoji_font == null:
+		return
+	var fallback := ThemeDB.fallback_font
+	if fallback == null or emoji_font in fallback.fallbacks:
+		return
+	fallback.fallbacks = fallback.fallbacks + [emoji_font]
 
 # ---------- LOGO INTRO ----------
 func _play_logo_intro() -> void:
@@ -411,6 +427,9 @@ func _setup_audio() -> void:
 	music_gen.buffer_length = 0.5
 	music_player = AudioStreamPlayer.new()
 	music_player.stream = music_gen
+	# Generated streams can't use the web export's default "sample" playback path,
+	# which otherwise leaves the browser build completely silent.
+	music_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	music_target_volume = MUSIC_VOLUME_NORMAL
 	add_child(music_player)
 	music_player.play()
@@ -424,6 +443,7 @@ func _setup_audio() -> void:
 	sfx_gen.buffer_length = 0.3
 	sfx_player = AudioStreamPlayer.new()
 	sfx_player.stream = sfx_gen
+	sfx_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	sfx_player.volume_db = -6.0
 	add_child(sfx_player)
 	sfx_player.play()
@@ -637,9 +657,12 @@ func _time_for_round(word: String, idx: int) -> float:
 
 # ---------- WORD SHUFFLING ----------
 func _active_word_pool() -> Array:
+	# Always hand back a copy: word_bag is shuffled, popped from and cleared,
+	# and a const Array is still mutable in GDScript — returning the pool
+	# itself would permanently empty it.
 	match LENGTH_MODE_KEYS[length_mode_index]:
-		"short": return WORD_POOL_SHORT
-		"long": return WORD_POOL_LONG
+		"short": return WORD_POOL_SHORT.duplicate()
+		"long": return WORD_POOL_LONG.duplicate()
 		_: return WORD_POOL_SHORT + WORD_POOL_MEDIUM + WORD_POOL_LONG  # mixed
 
 func _next_word() -> String:
