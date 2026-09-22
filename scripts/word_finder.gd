@@ -657,9 +657,12 @@ func _time_for_round(word: String, idx: int) -> float:
 
 # ---------- WORD SHUFFLING ----------
 func _active_word_pool() -> Array:
+	# Always hand back a copy: word_bag is shuffled, popped from and cleared,
+	# and a const Array is still mutable in GDScript — returning the pool
+	# itself would permanently empty it.
 	match LENGTH_MODE_KEYS[length_mode_index]:
-		"short": return WORD_POOL_SHORT
-		"long": return WORD_POOL_LONG
+		"short": return WORD_POOL_SHORT.duplicate()
+		"long": return WORD_POOL_LONG.duplicate()
 		_: return WORD_POOL_SHORT + WORD_POOL_MEDIUM + WORD_POOL_LONG  # mixed
 
 func _next_word() -> String:
